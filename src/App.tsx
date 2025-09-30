@@ -1,4 +1,4 @@
-// import "./index.css";
+import "./index.css";
 
 import React, { useState, useEffect, useCallback } from "react";
 import { initializeApp } from "firebase/app";
