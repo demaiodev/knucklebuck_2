@@ -1006,9 +1006,6 @@ const App: React.FC = () => {
           {!gameState.winner ? (
             /* Welcome/Start Screen */
             <>
-              <h2 className="text-xl md:text-3xl font-bold mb-4 text-yellow-400 text-center">
-                Welcome to The Buck!
-              </h2>
               <h5 className="text-base sm:text-lg mb-4 text-gray-300">
                 Total Wins:{" "}
                 <span className="font-mono text-xl">{playerOne.wins}</span>
