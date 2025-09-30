@@ -1,4 +1,4 @@
-import "./index.css"; // <-- MAKE SURE THIS IMPORT IS PRESENT
+import "./index.css";
 
 import React, { useState, useEffect, useCallback } from "react";
 import { initializeApp } from "firebase/app";
@@ -37,13 +37,20 @@ interface Player {
 interface GameState {
   winner?: Player;
   gameOver: boolean;
-  difficulty: number;
+  difficulty: number; // 0: Normal, 1: Easy, 2: Hard
   rollingDice: boolean;
   isAuthReady: boolean;
 }
 
 const TOTAL_LANES = 3;
 const LANE_SIZE = 3;
+
+// Updated the order to Easy, Normal, Hard (values remain the same)
+const DIFFICULTY_LEVELS = [
+  { value: 1, label: "Easy" },
+  { value: 0, label: "Normal" },
+  { value: 2, label: "Hard" },
+];
 
 // --- 2. GAME UTILITIES (Pure Functions) ---
 
@@ -95,7 +102,7 @@ function clearMatches(lane: number[], valueToClear: number): number[] {
   return newLane;
 }
 
-// --- 3. KNUCKLEBOT AI LOGIC (Mirrors Svelte logic, uses current state) ---
+// --- 3. KNUCKLEBOT AI LOGIC ---
 
 const selectRandomSpace = () => Math.floor(Math.random() * TOTAL_LANES);
 
@@ -104,6 +111,7 @@ const laneIsFull = (board: number[][], laneIndex: number) => {
   return board[laneIndex][LANE_SIZE - 1] !== 0;
 };
 
+// Finds an index of a non-full lane where the roll matches an existing die
 const matchMove = (selfBoard: number[][], roll: number) => {
   for (let x = 0; x < selfBoard.length; x++) {
     // Only consider non-full lanes for a matching move
@@ -112,6 +120,7 @@ const matchMove = (selfBoard: number[][], roll: number) => {
   return -1;
 };
 
+// Finds the index of an opponent's lane where the roll can be captured
 const captureMove = (opponentBoard: number[][], roll: number) => {
   for (let x = 0; x < opponentBoard.length; x++) {
     if (opponentBoard[x].includes(roll)) return x;
@@ -119,34 +128,100 @@ const captureMove = (opponentBoard: number[][], roll: number) => {
   return -1;
 };
 
+// Finds the best non-full lane to maximize current score
+const bestPlacementMove = (selfBoard: number[][], roll: number): number => {
+  let bestLaneIndex = -1;
+  let maxScoreIncrease = -Infinity;
+
+  for (let i = 0; i < selfBoard.length; i++) {
+    if (!laneIsFull(selfBoard, i)) {
+      // Simulate placing the die
+      const currentLane = selfBoard[i];
+      const nextEmptyIndex = currentLane.findIndex((v) => v === 0);
+
+      // This is complex, so let's use a simpler heuristic for 'Hard':
+      // Prioritize empty lanes, or lanes with the most dice already in them.
+
+      const filledSlots = currentLane.filter((v) => v !== 0).length;
+
+      if (filledSlots < LANE_SIZE) {
+        // For simplicity, hard mode just targets the least filled lane that also has the roll,
+        // or just the least filled lane if no match is available.
+        const nextLane: number[] = [...currentLane];
+        nextLane[nextEmptyIndex] = roll;
+        const newScore = calcLaneScore(nextLane);
+        const currentScore = calcLaneScore(currentLane);
+        const scoreIncrease = newScore - currentScore;
+
+        if (scoreIncrease > maxScoreIncrease) {
+          maxScoreIncrease = scoreIncrease;
+          bestLaneIndex = i;
+        }
+      }
+    }
+  }
+  // If a good scoring move is found, use it, otherwise fall back to the first non-full lane.
+  if (bestLaneIndex !== -1) return bestLaneIndex;
+
+  // Fallback: find the first non-full lane
+  for (let i = 0; i < selfBoard.length; i++) {
+    if (!laneIsFull(selfBoard, i)) return i;
+  }
+  return selectRandomSpace(); // Should only happen if all lanes are full
+};
+
 /**
- * Knucklebot AI logic: Prioritizes capture, then self-match, then random move.
+ * Knucklebot AI logic based on difficulty.
  */
 function knucklebotMove(
   opponentBoard: number[][],
   selfBoard: number[][],
   roll: number,
+  difficulty: number,
   isGameOver: boolean
 ): number {
+  // If the game is over, always return a random space (it shouldn't execute, but as a safeguard)
+  if (isGameOver) return selectRandomSpace();
+
   const captureIndex = captureMove(opponentBoard, roll);
-  const matchIndex = matchMove(selfBoard, roll); // matchMove already checks if lane is full
+  const matchIndex = matchMove(selfBoard, roll);
+  const firstNonFullLane = selfBoard.findIndex(
+    (_, i) => !laneIsFull(selfBoard, i)
+  );
 
-  // 1. Capture Move: If a capture is possible AND the lane isn't full
-  if (captureIndex !== -1 && !laneIsFull(selfBoard, captureIndex)) {
-    return captureIndex;
+  // Default fallback to random space
+  let selectedIndex = selectRandomSpace();
+  while (laneIsFull(selfBoard, selectedIndex)) {
+    selectedIndex = selectRandomSpace();
   }
 
-  // 2. Match Move: If a self-match is possible (checked inside matchMove)
-  if (matchIndex !== -1) {
-    return matchIndex;
-  }
+  switch (difficulty) {
+    case 1: // Easy: Prioritize Match > Capture > Random
+      if (matchIndex !== -1) return matchIndex;
+      if (captureIndex !== -1 && !laneIsFull(selfBoard, captureIndex))
+        return captureIndex;
+      return firstNonFullLane !== -1 ? firstNonFullLane : selectedIndex;
 
-  // 3. Random Move:
-  let randomLane = selectRandomSpace();
-  while (laneIsFull(selfBoard, randomLane) && !isGameOver) {
-    randomLane = selectRandomSpace();
+    case 2: {
+      // Hard: Prioritize Capture > Best Placement (Score Max) > Match > Random
+      if (captureIndex !== -1 && !laneIsFull(selfBoard, captureIndex))
+        return captureIndex;
+
+      // Aggressive Placement: Try to find a move that yields the highest *immediate* score increase
+      const bestIndex = bestPlacementMove(selfBoard, roll);
+      if (bestIndex !== -1) return bestIndex;
+
+      if (matchIndex !== -1) return matchIndex;
+      return firstNonFullLane !== -1 ? firstNonFullLane : selectedIndex;
+    }
+
+    case 0: // Normal (Default): Prioritize Capture > Match > Random
+    default:
+      if (captureIndex !== -1 && !laneIsFull(selfBoard, captureIndex))
+        return captureIndex;
+      if (matchIndex !== -1) return matchIndex;
+      return firstNonFullLane !== -1 ? firstNonFullLane : selectedIndex;
   }
-  return randomLane;
 }
 
 // --- 4. FIREBASE CONFIGURATION AND AUTH ---
@@ -156,10 +231,27 @@ declare const __app_id: string;
 declare const __firebase_config: string;
 declare const __initial_auth_token: string;
 
+// IMPORTANT: For local development, replace the placeholder values below with
+// your own Firebase project's web configuration object.
+// When running in the Canvas environment, this object will be ignored.
+const LOCAL_FIREBASE_CONFIG = {
+  apiKey: "YOUR_API_KEY",
+  authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
+  projectId: "YOUR_PROJECT_ID",
+  storageBucket: "YOUR_PROJECT_ID.appspot.com",
+  messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
+  appId: "YOUR_APP_ID",
+  // measurementId: "G-XXXXXXXXXX" // Optional
+};
+
 const appId =
   typeof __app_id !== "undefined" ? __app_id : "knucklebuck-default";
+
+// Prioritize Canvas config, fall back to the user's local config if running outside Canvas.
 const firebaseConfig =
-  typeof __firebase_config !== "undefined" ? JSON.parse(__firebase_config) : {};
+  typeof __firebase_config !== "undefined"
+    ? JSON.parse(__firebase_config)
+    : LOCAL_FIREBASE_CONFIG; // Use hardcoded local config as fallback
 
 // Interface to type-check for Firebase errors
 interface FirebaseError {
@@ -304,14 +396,17 @@ const Board: React.FC<BoardProps> = React.memo(
           const isFull = laneIsFull(player.board, index);
 
           return (
+            // The container dictates the overall stacking direction
             <div
               key={index}
               className={`flex flex-col items-center group ${laneStackDirection}`}
             >
-              {/* Lane Score Display */}
+              {/* Lane Score Display: Ensure score is always visually placed closest to the center line. 
+                           Order is maintained from previous change to keep lane scores central.
+                        */}
               <div
-                className={`h-6 text-sm font-bold mb-1 text-center ${
-                  player.isFirstPlayer ? "order-1" : "order-3 mt-1"
+                className={`h-6 text-sm font-bold text-center order-2 ${
+                  player.isFirstPlayer ? "mt-1" : "mb-1"
                 }`}
               >
                 <span
@@ -332,7 +427,7 @@ const Board: React.FC<BoardProps> = React.memo(
                 onClick={() => onSelection(index)}
                 className={`
                                 w-16 h-48 md:w-20 md:h-60 flex ${laneStackDirection} justify-end p-2 rounded-xl shadow-2xl 
-                                bg-gray-700 border-4 transition-all duration-200
+                                bg-gray-700 border-4 transition-all duration-200 order-1 // Explicitly set button order to 1
                                 ${
                                   player.isFirstPlayer
                                     ? "border-yellow-600"
@@ -372,8 +467,8 @@ const Board: React.FC<BoardProps> = React.memo(
 // Main App Component
 const App: React.FC = () => {
   const [db, setDb] = useState<Firestore | null>(null);
-  // Removed unused 'auth' state
   const [userId, setUserId] = useState<string>("");
+  const [selectedDifficulty, setSelectedDifficulty] = useState<number>(0); // Default to Normal (0)
 
   // Game State
   const initialPlayerBoard: number[][] = [
@@ -407,7 +502,7 @@ const App: React.FC = () => {
   );
   const [gameState, setGameState] = useState<GameState>({
     gameOver: true,
-    difficulty: 0,
+    difficulty: 0, // Will be set by startGame
     rollingDice: true,
     isAuthReady: false,
   });
@@ -425,7 +520,6 @@ const App: React.FC = () => {
       const unsubscribe = onAuthStateChanged(authInstance, (currentUser) => {
         if (currentUser) {
           setUserId(currentUser.uid);
-          // console.log("User signed in:", currentUser.uid);
         }
         setGameState((prev) => ({ ...prev, isAuthReady: true }));
       });
@@ -433,6 +527,8 @@ const App: React.FC = () => {
       // Sign in with custom token or anonymously
       const authenticate = async () => {
         try {
+          // NOTE: __initial_auth_token is provided by the Canvas environment for immediate authentication.
+          // If running locally, it signs in anonymously.
           if (typeof __initial_auth_token !== "undefined") {
             await withBackoff(() =>
               signInWithCustomToken(authInstance, __initial_auth_token)
@@ -451,7 +547,7 @@ const App: React.FC = () => {
       console.error("Firebase initialization failed:", e);
       setGameState((prev) => ({ ...prev, isAuthReady: true })); // Mark ready even if failed
     }
-  }, []); // Empty dependency array means this runs only on mount
+  }, []);
 
   // 6.2 Fetch/Listen for User Wins Data
   useEffect(() => {
@@ -474,9 +570,6 @@ const App: React.FC = () => {
           const data = docSnap.data();
           const storedWins = data?.totalWins || 0;
           setPlayerOne((prev) => ({ ...prev, wins: storedWins }));
-          // console.log("Wins data loaded:", storedWins);
-        } else {
-          // console.log("No existing wins data for user.");
         }
       },
       (error) => {
@@ -543,13 +636,16 @@ const App: React.FC = () => {
         scoreTwo: finalScoreTwo,
         winnerName: winner?.name || "Draw",
         timestamp: new Date().toISOString(),
+        difficulty:
+          DIFFICULTY_LEVELS.find((d) => d.value === gameState.difficulty)
+            ?.label || "Normal",
       };
 
       batch.set(matchDocRef, matchData);
 
       await withBackoff(() => batch.commit());
     },
-    [db, userId, playerOne, playerTwo]
+    [db, userId, playerOne, playerTwo, gameState.difficulty]
   );
 
   // --- 7. GAME LOGIC FUNCTIONS ---
@@ -561,9 +657,6 @@ const App: React.FC = () => {
 
   /**
    * Checks if the game is over and handles the final state transition.
-   * @param p1 The player one object (with final score/board)
-   * @param p2 The player two object (with final score/board)
-   * @returns boolean - true if game is over
    */
   const isGameOver = useCallback(
     (p1: Player, p2: Player): boolean => {
@@ -693,7 +786,6 @@ const App: React.FC = () => {
       }
 
       // 6. Set the final state for the next turn and start rolling dice
-      // We set the full player objects here, ensuring the score, board, and turn toggles are applied atomically.
       setPlayerOne(newP1);
       setPlayerTwo(newP2);
 
@@ -718,12 +810,15 @@ const App: React.FC = () => {
       !gameState.rollingDice &&
       playerTwo.currentRoll !== 0
     ) {
+      // --- AI Move Execution ---
       const selectionIndex = knucklebotMove(
         playerOne.board,
         playerTwo.board,
         playerTwo.currentRoll,
+        gameState.difficulty, // Pass difficulty here
         gameState.gameOver
       );
+      // --- End AI Move Execution ---
 
       // Wait a moment before making the AI move for visual effect
       const aiTimer = setTimeout(() => {
@@ -739,6 +834,7 @@ const App: React.FC = () => {
     playerTwo.isActive,
     playerTwo.board,
     playerTwo.currentRoll,
+    gameState.difficulty,
     handleDiceRoll,
     makeSelection,
   ]);
@@ -748,7 +844,6 @@ const App: React.FC = () => {
 
   /**
    * Function to start or reset the game.
-   * NOTE: The 'initialSetup' argument has been removed as it was unused.
    */
   const startGame = useCallback(() => {
     const p1Wins = playerOne.wins;
@@ -763,14 +858,20 @@ const App: React.FC = () => {
     setPlayerTwo(newP2);
     setGameState({
       gameOver: false,
-      difficulty: 0,
+      difficulty: selectedDifficulty, // Use selected difficulty from UI
       rollingDice: true,
       winner: undefined,
       isAuthReady: gameState.isAuthReady,
     });
 
     // handleDiceRoll will be called via useEffect
-  }, [playerOne.wins, playerTwo.wins, playerOneName, gameState.isAuthReady]);
+  }, [
+    playerOne.wins,
+    playerTwo.wins,
+    playerOneName,
+    gameState.isAuthReady,
+    selectedDifficulty,
+  ]);
 
   // Handle initial state setup on name change/load
   useEffect(() => {
@@ -915,25 +1016,49 @@ const App: React.FC = () => {
               </label>
               <input
                 id="player-name"
-                className="w-full p-3 mb-6 rounded-xl text-gray-900 bg-white border-2 border-yellow-500 focus:ring-2 focus:ring-yellow-400 transition-all shadow-inner"
+                className="w-full p-3 mb-4 rounded-xl text-gray-900 bg-white border-2 border-yellow-500 focus:ring-2 focus:ring-yellow-400 transition-all shadow-inner"
                 type="text"
                 value={playerOneName}
                 onChange={(e) => setPlayerOneName(e.target.value)}
                 placeholder="The Dice Slinger"
               />
+
+              {/* Difficulty Selection */}
+              <label
+                htmlFor="difficulty-select"
+                className="text-lg mb-2 text-gray-400 self-start"
+              >
+                Select Knucklebot Difficulty:
+              </label>
+              <select
+                id="difficulty-select"
+                value={selectedDifficulty}
+                onChange={(e) =>
+                  setSelectedDifficulty(parseInt(e.target.value))
+                }
+                className="w-full p-3 mb-6 rounded-xl text-gray-900 bg-white border-2 border-red-500 focus:ring-2 focus:ring-red-400 transition-all shadow-inner appearance-none"
+              >
+                {DIFFICULTY_LEVELS.map((d) => (
+                  <option key={d.value} value={d.value}>
+                    {d.label}
+                  </option>
+                ))}
+              </select>
+
               <button
                 type="button"
                 className="w-full py-3 px-6 bg-yellow-600 hover:bg-yellow-500 text-gray-900 font-extrabold text-xl rounded-xl shadow-xl transition duration-200 disabled:opacity-50 disabled:shadow-none transform hover:scale-[1.01] active:scale-[0.99]"
                 disabled={!playerOneName}
-                onClick={startGame} // Removed unused 'false' argument
+                onClick={startGame}
               >
                 START GAME
               </button>
+              {/* Reverting back to placeholder link text for rules */}
               <a
-                href="/rules"
+                href="/rules.md"
                 className="text-sm mt-4 text-gray-500 hover:text-gray-400 transition-colors"
               >
-                Rules & Scoring (Placeholder)
+                [Rules & Scoring Placeholder]
               </a>
             </>
           ) : (
@@ -942,6 +1067,11 @@ const App: React.FC = () => {
               <h2 className="text-4xl font-bold mb-4 text-red-400 uppercase tracking-widest">
                 Match Ended
               </h2>
+              <p className="text-sm text-gray-500 mb-2">
+                Difficulty:{" "}
+                {DIFFICULTY_LEVELS.find((d) => d.value === gameState.difficulty)
+                  ?.label || "Normal"}
+              </p>
               <h1 className="text-2xl md:text-3xl font-semibold mb-6">
                 {gameState.winner.isFirstPlayer ? (
                   <>
@@ -971,7 +1101,7 @@ const App: React.FC = () => {
               <button
                 type="button"
                 className="mt-4 w-full py-3 px-6 bg-yellow-600 hover:bg-yellow-500 text-gray-900 font-extrabold text-xl rounded-xl shadow-xl transition duration-200 transform hover:scale-[1.01] active:scale-[0.99]"
-                onClick={startGame} // Removed unused 'false' argument
+                onClick={startGame}
               >
                 PLAY AGAIN
               </button>
@@ -984,6 +1114,7 @@ const App: React.FC = () => {
           {/* Enemy (Player Two) Section - Top */}
           <div className="flex justify-between items-center p-4 bg-gray-800 rounded-xl shadow-inner shadow-gray-900 border-t-4 border-red-600">
             <div className="w-1/4 flex flex-col items-center">
+              {/* REVERTED: Name/Wins on top, Score on bottom */}
               <h3
                 className={`text-xl font-bold ${
                   playerTwo.isActive ? "text-red-400" : "text-gray-500"
@@ -1042,6 +1173,7 @@ const App: React.FC = () => {
               />
             </div>
             <div className="w-1/4 flex flex-col items-center">
+              {/* REVERTED: Name/Wins on top, Score on bottom */}
               <h3
                 className={`text-xl font-bold ${
                   playerOne.isActive ? "text-yellow-400" : "text-gray-500"
