@@ -238,8 +238,8 @@ const firebaseConfig = {
   projectId: "knucklebuck-e09bd",
   storageBucket: "knucklebuck-e09bd.firebasestorage.app",
   messagingSenderId: "1076166141891",
-  appId: "1:1076166141891:web:f08a0bed527383ebabbf76",
-  measurementId: "G-6NDE4HT6LP",
+  appId: "1:1076166141891:web:5868eebb827efe50abbf76",
+  measurementId: "G-HHJCF8KM82",
 };
 
 const appId = firebaseConfig.appId;
