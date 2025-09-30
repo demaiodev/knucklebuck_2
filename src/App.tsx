@@ -1,4 +1,4 @@
-import "./index.css";
+// import "./index.css";
 
 import React, { useState, useEffect, useCallback } from "react";
 import { initializeApp } from "firebase/app";
@@ -227,31 +227,22 @@ function knucklebotMove(
 // --- 4. FIREBASE CONFIGURATION AND AUTH ---
 
 // Global variables provided by the Canvas environment
-declare const __app_id: string;
-declare const __firebase_config: string;
 declare const __initial_auth_token: string;
 
 // IMPORTANT: For local development, replace the placeholder values below with
 // your own Firebase project's web configuration object.
 // When running in the Canvas environment, this object will be ignored.
-const LOCAL_FIREBASE_CONFIG = {
-  apiKey: "YOUR_API_KEY",
-  authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
-  projectId: "YOUR_PROJECT_ID",
-  storageBucket: "YOUR_PROJECT_ID.appspot.com",
-  messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
-  appId: "YOUR_APP_ID",
-  // measurementId: "G-XXXXXXXXXX" // Optional
+const firebaseConfig = {
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
+  authDomain: "knucklebuck-e09bd.firebaseapp.com",
+  projectId: "knucklebuck-e09bd",
+  storageBucket: "knucklebuck-e09bd.firebasestorage.app",
+  messagingSenderId: "1076166141891",
+  appId: "1:1076166141891:web:f08a0bed527383ebabbf76",
+  measurementId: "G-6NDE4HT6LP",
 };
 
-const appId =
-  typeof __app_id !== "undefined" ? __app_id : "knucklebuck-default";
-
-// Prioritize Canvas config, fall back to the user's local config if running outside Canvas.
-const firebaseConfig =
-  typeof __firebase_config !== "undefined"
-    ? JSON.parse(__firebase_config)
-    : LOCAL_FIREBASE_CONFIG; // Use hardcoded local config as fallback
+const appId = firebaseConfig.appId;
 
 // Interface to type-check for Firebase errors
 interface FirebaseError {
@@ -516,7 +507,6 @@ const App: React.FC = () => {
       const authInstance = getAuth(app);
       const dbInstance = getFirestore(app);
       setDb(dbInstance);
-
       const unsubscribe = onAuthStateChanged(authInstance, (currentUser) => {
         if (currentUser) {
           setUserId(currentUser.uid);
@@ -555,6 +545,8 @@ const App: React.FC = () => {
 
     const userDocRef = doc(
       db,
+      "artifacts",
+      appId,
       "artifacts",
       appId,
       "users",
