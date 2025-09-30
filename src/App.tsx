@@ -882,7 +882,7 @@ const App: React.FC = () => {
 
   if (!gameState.isAuthReady) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-gray-900 text-white">
+      <div className="flex items-center justify-center min-h-screen w-full bg-gray-900 text-white">
         <div className="text-xl p-4 rounded-lg bg-gray-800 shadow-xl animate-pulse">
           <svg
             className="animate-spin -ml-1 mr-3 h-5 w-5 text-yellow-400"
@@ -920,7 +920,13 @@ const App: React.FC = () => {
     color,
   }) => {
     if (roll === 0)
-      return <div className={`text-6xl text-gray-700 font-mono`}>?</div>;
+      return (
+        <div
+          className={`text-5xl md:text-6xl text-gray-700 font-mono flex items-center justify-center w-16 h-16 md:w-20 md:h-20`}
+        >
+          ?
+        </div>
+      );
 
     // Dot positions (relative to a 100x100 grid)
     const dotPositions: { [key: number]: [number, number][] } = {
@@ -989,28 +995,28 @@ const App: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen w-full bg-gray-900 font-inter text-white flex flex-col items-center p-4">
-      <h1 className="text-4xl font-extrabold mb-6 text-yellow-500 tracking-wider drop-shadow-lg">
+    <div className="min-h-screen w-full bg-gray-900 font-inter text-white flex flex-col items-center p-2 sm:p-4">
+      <h1 className="text-3xl sm:text-4xl font-extrabold mb-4 sm:mb-6 text-yellow-500 tracking-wider drop-shadow-lg">
         KNUCKLEBUCK
       </h1>
 
       {/* Start Screen / Game Over Screen */}
       {gameState.gameOver ? (
-        <div className="flex flex-col items-center justify-center w-full max-w-lg bg-gray-800 p-8 rounded-2xl shadow-2xl mt-8 border border-gray-700">
+        <div className="flex flex-col items-center justify-center w-full max-w-sm sm:max-w-lg bg-gray-800 p-6 sm:p-8 rounded-2xl shadow-2xl mt-4 sm:mt-8 border border-gray-700">
           {!gameState.winner ? (
             /* Welcome/Start Screen */
             <>
-              <h2 className="text-2xl md:text-3xl font-bold mb-4 text-yellow-400">
+              <h2 className="text-xl md:text-3xl font-bold mb-4 text-yellow-400 text-center">
                 Welcome to The Buck!
               </h2>
-              <h5 className="text-lg mb-4 text-gray-300">
+              <h5 className="text-base sm:text-lg mb-4 text-gray-300">
                 Total Wins:{" "}
                 <span className="font-mono text-xl">{playerOne.wins}</span>
               </h5>
 
               <label
                 htmlFor="player-name"
-                className="text-lg mb-2 text-gray-400 self-start"
+                className="text-base sm:text-lg mb-2 text-gray-400 self-start"
               >
                 Enter your name:
               </label>
@@ -1026,7 +1032,7 @@ const App: React.FC = () => {
               {/* Difficulty Selection */}
               <label
                 htmlFor="difficulty-select"
-                className="text-lg mb-2 text-gray-400 self-start"
+                className="text-base sm:text-lg mb-2 text-gray-400 self-start"
               >
                 Select Knucklebot Difficulty:
               </label>
@@ -1056,7 +1062,7 @@ const App: React.FC = () => {
               {/* Reverting back to placeholder link text for rules */}
               <a
                 href="/rules.md"
-                className="text-sm mt-4 text-gray-500 hover:text-gray-400 transition-colors"
+                className="text-xs sm:text-sm mt-4 text-gray-500 hover:text-gray-400 transition-colors"
               >
                 [Rules & Scoring Placeholder]
               </a>
@@ -1064,7 +1070,7 @@ const App: React.FC = () => {
           ) : (
             /* Game Over Screen */
             <div className="text-center">
-              <h2 className="text-4xl font-bold mb-4 text-red-400 uppercase tracking-widest">
+              <h2 className="text-3xl sm:text-4xl font-bold mb-4 text-red-400 uppercase tracking-widest">
                 Match Ended
               </h2>
               <p className="text-sm text-gray-500 mb-2">
@@ -1072,7 +1078,7 @@ const App: React.FC = () => {
                 {DIFFICULTY_LEVELS.find((d) => d.value === gameState.difficulty)
                   ?.label || "Normal"}
               </p>
-              <h1 className="text-2xl md:text-3xl font-semibold mb-6">
+              <h1 className="text-xl md:text-3xl font-semibold mb-6">
                 {gameState.winner.isFirstPlayer ? (
                   <>
                     🏆 Victory!{" "}
@@ -1095,7 +1101,7 @@ const App: React.FC = () => {
                   </>
                 )}
               </h1>
-              <p className="text-lg text-gray-400 mb-6">
+              <p className="text-base sm:text-lg text-gray-400 mb-6">
                 Your total wins: {playerOne.wins}
               </p>
               <button
@@ -1110,19 +1116,19 @@ const App: React.FC = () => {
         </div>
       ) : (
         /* Active Game Screen */
-        <div className="flex flex-col w-full max-w-4xl space-y-6">
+        <div className="flex flex-col w-full max-w-4xl space-y-4 sm:space-y-6">
           {/* Enemy (Player Two) Section - Top */}
-          <div className="flex justify-between items-center p-4 bg-gray-800 rounded-xl shadow-inner shadow-gray-900 border-t-4 border-red-600">
+          <div className="flex justify-between items-center p-2 sm:p-4 bg-gray-800 rounded-xl shadow-inner shadow-gray-900 border-t-4 border-red-600">
+            {/* Mobile Optimized Player Info Block */}
             <div className="w-1/4 flex flex-col items-center">
-              {/* REVERTED: Name/Wins on top, Score on bottom */}
               <h3
-                className={`text-xl font-bold ${
+                className={`text-sm md:text-xl font-bold ${
                   playerTwo.isActive ? "text-red-400" : "text-gray-500"
-                }`}
+                } text-center`}
               >
-                {playerTwo.name} ({playerTwo.wins} W)
+                {playerTwo.name}
               </h3>
-              <span className="text-3xl font-mono text-red-300 drop-shadow-md">
+              <span className="text-2xl md:text-3xl font-mono text-red-300 drop-shadow-md">
                 {playerTwo.score}
               </span>
             </div>
@@ -1140,8 +1146,8 @@ const App: React.FC = () => {
           </div>
 
           {/* Game Info / Dice Roll - Middle */}
-          <div className="flex justify-center items-center h-12">
-            <div className="text-lg font-semibold text-gray-400 bg-gray-700/50 px-4 py-2 rounded-full shadow-md">
+          <div className="flex justify-center items-center h-10 sm:h-12">
+            <div className="text-sm sm:text-lg font-semibold text-gray-400 bg-gray-700/50 px-3 py-1 sm:px-4 sm:py-2 rounded-full shadow-md">
               {gameState.rollingDice ? (
                 <span className="text-yellow-400 animate-pulse font-bold">
                   ROLLING DICE...
@@ -1161,7 +1167,7 @@ const App: React.FC = () => {
           </div>
 
           {/* Player One Section - Bottom */}
-          <div className="flex justify-between items-center p-4 bg-gray-800 rounded-xl shadow-inner shadow-gray-900 border-b-4 border-yellow-600">
+          <div className="flex justify-between items-center p-2 sm:p-4 bg-gray-800 rounded-xl shadow-inner shadow-gray-900 border-b-4 border-yellow-600">
             <div className="w-1/4 flex justify-center">
               <CurrentRollDice roll={playerOne.currentRoll} color="yellow" />
             </div>
@@ -1172,23 +1178,23 @@ const App: React.FC = () => {
                 onSelection={makeSelection}
               />
             </div>
+            {/* Mobile Optimized Player Info Block */}
             <div className="w-1/4 flex flex-col items-center">
-              {/* REVERTED: Name/Wins on top, Score on bottom */}
               <h3
-                className={`text-xl font-bold ${
+                className={`text-sm md:text-xl font-bold ${
                   playerOne.isActive ? "text-yellow-400" : "text-gray-500"
-                }`}
+                } text-center`}
               >
-                {playerOne.name} ({playerOne.wins} W)
+                {playerOne.name}
               </h3>
-              <span className="text-3xl font-mono text-yellow-300 drop-shadow-md">
+              <span className="text-2xl md:text-3xl font-mono text-yellow-300 drop-shadow-md">
                 {playerOne.score}
               </span>
             </div>
           </div>
         </div>
       )}
-      <p className="mt-8 text-xs text-gray-600">User ID: {userId}</p>
+      <p className="mt-4 sm:mt-8 text-xs text-gray-600">User ID: {userId}</p>
     </div>
   );
 };
