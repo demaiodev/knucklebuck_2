@@ -282,7 +282,7 @@ const Board: React.FC<BoardProps> = React.memo(
     // Ring color for the active player's board (Player 1 only)
     const laneActive =
       !gameState.rollingDice && player.isActive && player.isFirstPlayer
-        ? " ring-4 ring-yellow-400/80"
+        ? " ring-4 ring-blue-400/80"
         : "";
     const waitingForTurn = !player.isActive;
 
@@ -318,7 +318,7 @@ const Board: React.FC<BoardProps> = React.memo(
                                 bg-gray-700 border-4 transition-all duration-200 order-1 // Explicitly set button order to 1
                                 ${
                                   player.isFirstPlayer
-                                    ? "border-yellow-600"
+                                    ? "border-blue-600"
                                     : "border-red-600"
                                 }
                                 hover:bg-gray-600 disabled:opacity-70 disabled:cursor-not-allowed
@@ -349,7 +349,7 @@ const Board: React.FC<BoardProps> = React.memo(
                   className={
                     laneScore > 0
                       ? player.isFirstPlayer
-                        ? "text-yellow-600"
+                        ? "text-blue-600"
                         : "text-red-600"
                       : "text-gray-500"
                   }
@@ -683,7 +683,7 @@ const App: React.FC = () => {
             ry="20"
             className={`fill-white shadow-xl ${
               color === "yellow"
-                ? "ring-4 ring-yellow-400"
+                ? "ring-4 ring-blue-400"
                 : "ring-4 ring-red-400"
             }`}
           />
@@ -703,7 +703,7 @@ const App: React.FC = () => {
 
   return (
     <div className="min-h-screen w-full bg-gray-900 font-inter text-white flex flex-col items-center p-2 sm:p-4">
-      <h1 className="text-3xl sm:text-4xl font-extrabold mb-4 sm:mb-6 text-yellow-500 tracking-wider drop-shadow-lg">
+      <h1 className="text-3xl sm:text-4xl font-extrabold mb-4 sm:mb-6 text-white tracking-wider drop-shadow-lg">
         KNUCKLEBUCK
       </h1>
       {gameState.gameOver ? (
@@ -719,7 +719,7 @@ const App: React.FC = () => {
               </label>
               <input
                 id="player-name"
-                className="w-full p-3 mb-4 rounded-xl text-gray-900 bg-white border-2 border-yellow-500 focus:ring-2 focus:ring-yellow-400 transition-all shadow-inner"
+                className="w-full p-3 mb-4 rounded-xl text-gray-900 bg-white border-2 border-blue-500 focus:ring-2 focus:ring-blue-400 transition-all shadow-inner"
                 type="text"
                 value={playerOneName}
                 onChange={(e) => setPlayerOneName(e.target.value)}
@@ -747,7 +747,7 @@ const App: React.FC = () => {
               </select>
               <button
                 type="button"
-                className="w-full py-3 px-6 bg-yellow-600 hover:bg-yellow-500 text-gray-900 font-extrabold text-xl rounded-xl shadow-xl transition duration-200 disabled:opacity-50 disabled:shadow-none transform hover:scale-[1.01] active:scale-[0.99]"
+                className="w-full py-3 px-6 bg-blue-600 hover:bg-blue-500 text-gray-900 font-extrabold text-xl rounded-xl shadow-xl transition duration-200 disabled:opacity-50 disabled:shadow-none transform hover:scale-[1.01] active:scale-[0.99]"
                 disabled={!playerOneName}
                 onClick={startGame}
               >
@@ -769,7 +769,7 @@ const App: React.FC = () => {
                 {gameState.winner.isFirstPlayer ? (
                   <>
                     🏆 Victory!{" "}
-                    <span className="text-yellow-400">
+                    <span className="text-blue-400">
                       {gameState.winner.name}
                     </span>
                     !
@@ -791,7 +791,7 @@ const App: React.FC = () => {
               </p>
               <button
                 type="button"
-                className="mt-4 w-full py-3 px-6 bg-yellow-600 hover:bg-yellow-500 text-gray-900 font-extrabold text-xl rounded-xl shadow-xl transition duration-200 transform hover:scale-[1.01] active:scale-[0.99]"
+                className="mt-4 w-full py-3 px-6 bg-blue-600 hover:bg-blue-500 text-gray-900 font-extrabold text-xl rounded-xl shadow-xl transition duration-200 transform hover:scale-[1.01] active:scale-[0.99]"
                 onClick={startGame}
               >
                 PLAY AGAIN
@@ -829,14 +829,14 @@ const App: React.FC = () => {
           <div className="flex justify-center items-center h-10 sm:h-12">
             <div className="text-sm sm:text-lg font-semibold text-gray-400 bg-gray-700/50 px-3 py-1 sm:px-4 sm:py-2 rounded-full shadow-md">
               {gameState.rollingDice ? (
-                <span className="text-yellow-400 animate-pulse font-bold">
+                <span className="text-blue-400 animate-pulse font-bold">
                   ROLLING DICE...
                 </span>
               ) : (
                 <span
                   className={`font-bold ${
                     activePlayer.isFirstPlayer
-                      ? "text-yellow-400"
+                      ? "text-blue-400"
                       : "text-red-400"
                   }`}
                 >
@@ -845,7 +845,7 @@ const App: React.FC = () => {
               )}
             </div>
           </div>
-          <div className="flex justify-between items-center p-2 sm:p-4 bg-gray-800 rounded-xl shadow-inner shadow-gray-900 border-b-4 border-yellow-600">
+          <div className="flex justify-between items-center p-2 sm:p-4 bg-gray-800 rounded-xl shadow-inner shadow-gray-900 border-b-4 border-blue-600">
             <div className="w-1/4 flex justify-center">
               <CurrentRollDice roll={playerOne.currentRoll} color="yellow" />
             </div>
@@ -859,12 +859,12 @@ const App: React.FC = () => {
             <div className="w-1/4 flex flex-col items-center">
               <h3
                 className={`text-sm md:text-xl font-bold ${
-                  playerOne.isActive ? "text-yellow-400" : "text-gray-500"
+                  playerOne.isActive ? "text-blue-400" : "text-gray-500"
                 } text-center`}
               >
                 {playerOne.name}
               </h3>
-              <span className="text-2xl md:text-3xl font-mono text-yellow-300 drop-shadow-md">
+              <span className="text-2xl md:text-3xl font-mono text-blue-300 drop-shadow-md">
                 {playerOne.score}
               </span>
             </div>
@@ -872,7 +872,7 @@ const App: React.FC = () => {
         </div>
       )}
       <a
-        className="mt-8 py-3 px-6 bg-yellow-600 hover:bg-yellow-500 text-gray-900 font-extrabold text-xl rounded-xl shadow-xl"
+        className="mt-8 py-3 px-6 bg-blue-900 hover:bg-blue-500 text-white font-extrabold text-xl rounded-xl shadow-xl"
         href="https://cult-of-the-lamb.fandom.com/wiki/Knucklebones"
         target="_blank"
       >
