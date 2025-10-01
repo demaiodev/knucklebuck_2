@@ -586,9 +586,6 @@ const App: React.FC = () => {
     makeSelection,
   ]);
 
-  // Memoized derived states for UI
-  const inactivePlayer = playerOne.isActive ? playerTwo : playerOne; // Used in Game Over Screen
-
   /**
    * Function to start or reset the game.
    */
@@ -776,8 +773,7 @@ const App: React.FC = () => {
                       {gameState.winner.name}
                     </span>
                     !
-                    <br /> Score: {gameState.winner.score} -{" "}
-                    {inactivePlayer.score}
+                    <br /> Score: {playerOne.score} - {playerTwo.score}
                   </>
                 ) : (
                   <>
@@ -786,8 +782,7 @@ const App: React.FC = () => {
                       {gameState.winner.name}
                     </span>{" "}
                     wins.
-                    <br /> Score: {inactivePlayer.score} -{" "}
-                    {gameState.winner.score}
+                    <br /> Score: {playerTwo.score} - {playerOne.score}
                   </>
                 )}
               </h1>
