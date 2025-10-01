@@ -311,21 +311,6 @@ const Board: React.FC<BoardProps> = React.memo(
               key={index}
               className={`flex flex-col items-center group ${laneStackDirection}`}
             >
-              {/* Lane Score Display: Ensure score is always visually placed closest to the center line. 
-                           Order is maintained from previous change to keep lane scores central.
-                        */}
-              <div
-                className={`h-6 text-sm font-bold text-center order-2 ${
-                  player.isFirstPlayer ? "mt-1" : "mb-1"
-                }`}
-              >
-                <span
-                  className={laneScore > 0 ? "text-green-400" : "text-gray-500"}
-                >
-                  {laneScore}
-                </span>
-              </div>
-
               <button
                 disabled={
                   waitingForTurn ||
@@ -366,6 +351,19 @@ const Board: React.FC<BoardProps> = React.memo(
                   </div>
                 ))}
               </button>
+              <div className={`my-1 text-sm font-bold text-center`}>
+                <span
+                  className={
+                    laneScore > 0
+                      ? player.isFirstPlayer
+                        ? "text-yellow-600"
+                        : "text-red-600"
+                      : "text-gray-500"
+                  }
+                >
+                  {laneScore}
+                </span>
+              </div>
             </div>
           );
         })}
@@ -685,7 +683,7 @@ const App: React.FC = () => {
     const dots = dotPositions[roll] || [];
 
     return (
-      <div className="w-16 h-16 md:w-20 md:h-20 flex items-center justify-center">
+      <div className="w-10 h-10 md:w-20 md:h-20 flex items-center justify-center">
         <svg viewBox="0 0 100 100" className="w-full h-full">
           <rect
             x="0"
