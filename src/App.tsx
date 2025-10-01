@@ -791,7 +791,7 @@ const App: React.FC = () => {
               </p>
               <button
                 type="button"
-                className="mt-4 w-full py-3 px-6 bg-blue-600 hover:bg-blue-500 text-gray-900 font-extrabold text-xl rounded-xl shadow-xl transition duration-200 transform hover:scale-[1.01] active:scale-[0.99]"
+                className="mt-4 w-full py-3 px-6 bg-green-800 hover:bg-green-700 text-white font-extrabold text-xl rounded-xl shadow-xl transition duration-200 transform hover:scale-[1.01] active:scale-[0.99]"
                 onClick={startGame}
               >
                 PLAY AGAIN
