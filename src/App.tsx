@@ -747,7 +747,7 @@ const App: React.FC = () => {
               </select>
               <button
                 type="button"
-                className="w-full mt-4 py-3 px-6 bg-green-800 hover:bg-green-700 text-white font-extrabold text-xl rounded-xl shadow-xl transition duration-200 disabled:opacity-50 disabled:shadow-none transform hover:scale-[1.01] active:scale-[0.99]"
+                className="w-full mt-4 py-3 px-6 bg-green-800 hover:bg-green-700 text-white font-extrabold text-xl rounded-xl shadow-xl"
                 disabled={!playerOneName}
                 onClick={startGame}
               >
@@ -786,12 +786,9 @@ const App: React.FC = () => {
                   </>
                 )}
               </h1>
-              <p className="text-base sm:text-lg text-gray-400 mb-6">
-                Your total wins: {playerOne.wins}
-              </p>
               <button
                 type="button"
-                className="mt-4 w-full py-3 px-6 bg-green-800 hover:bg-green-700 text-white font-extrabold text-xl rounded-xl shadow-xl transition duration-200 transform hover:scale-[1.01] active:scale-[0.99]"
+                className="mt-4 w-full py-3 px-6 bg-green-800 hover:bg-green-700 text-white font-extrabold text-xl rounded-xl shadow-xl"
                 onClick={startGame}
               >
                 PLAY AGAIN
