@@ -1,10 +1,7 @@
+import React, { useState, useEffect, useCallback } from "react";
 import "./index.css";
 
-import React, { useState, useEffect, useCallback } from "react";
-
 // --- 1. TYPES AND CONSTANTS ---
-
-// Define the shape of the game data
 interface Player {
   name: string;
   isFirstPlayer: boolean;
@@ -15,8 +12,6 @@ interface Player {
   board: number[][]; // 3x3 array of dice values (0-6)
   wins: number;
   isActive: boolean;
-  // Add an ID for Firestore doc reference later
-  id: string;
 }
 
 interface GameState {
@@ -28,8 +23,6 @@ interface GameState {
 
 const TOTAL_LANES = 3;
 const LANE_SIZE = 3;
-
-// Updated the order to Easy, Normal, Hard (values remain the same)
 const DIFFICULTY_LEVELS = [
   { value: 1, label: "Easy" },
   { value: 0, label: "Normal" },
@@ -396,7 +389,6 @@ const App: React.FC = () => {
     wins,
     isActive: false,
     board: initialPlayerBoard.map((lane) => [...lane]), // Deep copy
-    id: isFirstPlayer ? "playerOne" : "playerTwo",
   });
 
   const [playerOneName, setPlayerOneName] = useState("Player");
@@ -717,8 +709,6 @@ const App: React.FC = () => {
       <h1 className="text-3xl sm:text-4xl font-extrabold mb-4 sm:mb-6 text-yellow-500 tracking-wider drop-shadow-lg">
         KNUCKLEBUCK
       </h1>
-
-      {/* Start Screen / Game Over Screen */}
       {gameState.gameOver ? (
         <div className="flex flex-col items-center justify-center w-full max-w-sm sm:max-w-lg bg-gray-800 p-6 sm:p-8 rounded-2xl shadow-2xl mt-4 sm:mt-8 border border-gray-700">
           {!gameState.winner ? (
@@ -738,8 +728,6 @@ const App: React.FC = () => {
                 onChange={(e) => setPlayerOneName(e.target.value)}
                 placeholder="Player name..."
               />
-
-              {/* Difficulty Selection */}
               <label
                 htmlFor="difficulty-select"
                 className="text-base sm:text-lg mb-2 text-gray-400 self-start"
@@ -760,7 +748,6 @@ const App: React.FC = () => {
                   </option>
                 ))}
               </select>
-
               <button
                 type="button"
                 className="w-full py-3 px-6 bg-yellow-600 hover:bg-yellow-500 text-gray-900 font-extrabold text-xl rounded-xl shadow-xl transition duration-200 disabled:opacity-50 disabled:shadow-none transform hover:scale-[1.01] active:scale-[0.99]"
@@ -820,9 +807,7 @@ const App: React.FC = () => {
       ) : (
         /* Active Game Screen */
         <div className="flex flex-col w-full max-w-4xl space-y-4 sm:space-y-6">
-          {/* Enemy (Player Two) Section - Top */}
           <div className="flex justify-between items-center p-2 sm:p-4 bg-gray-800 rounded-xl shadow-inner shadow-gray-900 border-t-4 border-red-600">
-            {/* Mobile Optimized Player Info Block */}
             <div className="w-1/4 flex flex-col items-center">
               <h3
                 className={`text-sm md:text-xl font-bold ${
@@ -836,7 +821,6 @@ const App: React.FC = () => {
               </span>
             </div>
             <div className="w-1/2 flex justify-center">
-              {/* Board is rendered top-down using flex-col-reverse in its component logic */}
               <Board
                 player={playerTwo}
                 gameState={gameState}
@@ -847,8 +831,6 @@ const App: React.FC = () => {
               <CurrentRollDice roll={playerTwo.currentRoll} color="red" />
             </div>
           </div>
-
-          {/* Game Info / Dice Roll - Middle */}
           <div className="flex justify-center items-center h-10 sm:h-12">
             <div className="text-sm sm:text-lg font-semibold text-gray-400 bg-gray-700/50 px-3 py-1 sm:px-4 sm:py-2 rounded-full shadow-md">
               {gameState.rollingDice ? (
@@ -868,8 +850,6 @@ const App: React.FC = () => {
               )}
             </div>
           </div>
-
-          {/* Player One Section - Bottom */}
           <div className="flex justify-between items-center p-2 sm:p-4 bg-gray-800 rounded-xl shadow-inner shadow-gray-900 border-b-4 border-yellow-600">
             <div className="w-1/4 flex justify-center">
               <CurrentRollDice roll={playerOne.currentRoll} color="yellow" />
@@ -881,7 +861,6 @@ const App: React.FC = () => {
                 onSelection={makeSelection}
               />
             </div>
-            {/* Mobile Optimized Player Info Block */}
             <div className="w-1/4 flex flex-col items-center">
               <h3
                 className={`text-sm md:text-xl font-bold ${
