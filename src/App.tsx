@@ -1,21 +1,6 @@
 import "./index.css";
 
 import React, { useState, useEffect, useCallback } from "react";
-import { initializeApp } from "firebase/app";
-import {
-  getAuth,
-  signInAnonymously,
-  signInWithCustomToken,
-  onAuthStateChanged,
-} from "firebase/auth";
-import {
-  getFirestore,
-  doc,
-  collection,
-  onSnapshot,
-  writeBatch,
-  Firestore,
-} from "firebase/firestore";
 
 // --- 1. TYPES AND CONSTANTS ---
 
@@ -39,7 +24,6 @@ interface GameState {
   gameOver: boolean;
   difficulty: number; // 0: Normal, 1: Easy, 2: Hard
   rollingDice: boolean;
-  isAuthReady: boolean;
 }
 
 const TOTAL_LANES = 3;
@@ -224,71 +208,6 @@ function knucklebotMove(
   }
 }
 
-// --- 4. FIREBASE CONFIGURATION AND AUTH ---
-
-// Global variables provided by the Canvas environment
-declare const __initial_auth_token: string;
-
-// IMPORTANT: For local development, replace the placeholder values below with
-// your own Firebase project's web configuration object.
-// When running in the Canvas environment, this object will be ignored.
-const firebaseConfig = {
-  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
-  authDomain: "knucklebuck-e09bd.firebaseapp.com",
-  projectId: "knucklebuck-e09bd",
-  storageBucket: "knucklebuck-e09bd.firebasestorage.app",
-  messagingSenderId: "1076166141891",
-  appId: "1:1076166141891:web:5868eebb827efe50abbf76",
-  measurementId: "G-HHJCF8KM82",
-};
-
-const appId = firebaseConfig.appId;
-
-// Interface to type-check for Firebase errors
-interface FirebaseError {
-  code: string;
-  message: string;
-}
-
-/**
- * Helper to handle exponential backoff for Firestore retries.
- */
-async function withBackoff<T>(
-  fn: () => Promise<T>,
-  maxRetries = 5
-): Promise<T> {
-  for (let i = 0; i < maxRetries; i++) {
-    try {
-      return await fn();
-    } catch (error: unknown) {
-      // Check if the error object resembles a FirebaseError with a 'code' property
-      const isFirebaseError =
-        typeof error === "object" && error !== null && "code" in error;
-
-      if (isFirebaseError) {
-        // Now TypeScript knows this object has a 'code' property
-        const firebaseError = error as FirebaseError;
-
-        // Check for retryable error codes
-        if (
-          firebaseError.code === "unavailable" ||
-          firebaseError.code === "resource-exhausted" ||
-          firebaseError.message.includes("unavailable")
-        ) {
-          const delay = Math.pow(2, i) * 1000 + Math.random() * 1000;
-          await new Promise((resolve) => setTimeout(resolve, delay));
-          continue; // Continue to the next retry attempt
-        }
-      }
-
-      // If it's not a retryable error, or if we can't determine the type, throw
-      console.error("Firebase operation failed after retries:", error);
-      throw error;
-    }
-  }
-  throw new Error("Max retries exceeded for Firebase operation.");
-}
-
 // --- 5. REACT COMPONENTS ---
 
 /**
@@ -457,8 +376,6 @@ const Board: React.FC<BoardProps> = React.memo(
 
 // Main App Component
 const App: React.FC = () => {
-  const [db, setDb] = useState<Firestore | null>(null);
-  const [userId, setUserId] = useState<string>("");
   const [selectedDifficulty, setSelectedDifficulty] = useState<number>(0); // Default to Normal (0)
 
   // Game State
@@ -495,150 +412,7 @@ const App: React.FC = () => {
     gameOver: true,
     difficulty: 0, // Will be set by startGame
     rollingDice: true,
-    isAuthReady: false,
   });
-
-  // --- 6. FIREBASE INITIALIZATION & DATA HOOKS ---
-
-  // 6.1 Initialize Firebase and Auth
-  useEffect(() => {
-    try {
-      const app = initializeApp(firebaseConfig);
-      const authInstance = getAuth(app);
-      const dbInstance = getFirestore(app);
-      setDb(dbInstance);
-      const unsubscribe = onAuthStateChanged(authInstance, (currentUser) => {
-        if (currentUser) {
-          setUserId(currentUser.uid);
-        }
-        setGameState((prev) => ({ ...prev, isAuthReady: true }));
-      });
-
-      // Sign in with custom token or anonymously
-      const authenticate = async () => {
-        try {
-          // NOTE: __initial_auth_token is provided by the Canvas environment for immediate authentication.
-          // If running locally, it signs in anonymously.
-          if (typeof __initial_auth_token !== "undefined") {
-            await withBackoff(() =>
-              signInWithCustomToken(authInstance, __initial_auth_token)
-            );
-          } else {
-            await withBackoff(() => signInAnonymously(authInstance));
-          }
-        } catch (e) {
-          console.error("Authentication failed:", e);
-        }
-      };
-      authenticate();
-
-      return () => unsubscribe();
-    } catch (e) {
-      console.error("Firebase initialization failed:", e);
-      setGameState((prev) => ({ ...prev, isAuthReady: true })); // Mark ready even if failed
-    }
-  }, []);
-
-  // 6.2 Fetch/Listen for User Wins Data
-  useEffect(() => {
-    if (!db || !userId || !gameState.isAuthReady) return;
-
-    const userDocRef = doc(
-      db,
-      "artifacts",
-      appId,
-      "artifacts",
-      appId,
-      "users",
-      userId,
-      "stats",
-      "knucklebuck_stats"
-    );
-
-    const unsubscribe = onSnapshot(
-      userDocRef,
-      (docSnap) => {
-        if (docSnap.exists()) {
-          const data = docSnap.data();
-          const storedWins = data?.totalWins || 0;
-          setPlayerOne((prev) => ({ ...prev, wins: storedWins }));
-        }
-      },
-      (error) => {
-        console.error("Error listening to user stats:", error);
-      }
-    );
-
-    return () => unsubscribe();
-  }, [db, userId, gameState.isAuthReady]);
-
-  // 6.3 Firebase Save Data (Replaces localStorage.setItem)
-  const saveData = useCallback(
-    async (
-      winner: Player | undefined,
-      finalScoreOne: number,
-      finalScoreTwo: number,
-      playerOneNewTotalWins: number
-    ) => {
-      if (!db || !userId) {
-        console.error(
-          "Cannot save data: Database not initialized or user not authenticated."
-        );
-        return;
-      }
-
-      const batch = writeBatch(db);
-
-      // 1. Update Player 1's Win Count
-      if (winner && winner.isFirstPlayer) {
-        const userStatsRef = doc(
-          db,
-          "artifacts",
-          appId,
-          "users",
-          userId,
-          "stats",
-          "knucklebuck_stats"
-        );
-        batch.set(
-          userStatsRef,
-          {
-            totalWins: playerOneNewTotalWins,
-            lastUpdated: new Date().toISOString(),
-          },
-          { merge: true }
-        );
-      }
-
-      // 2. Save Match History (Private for user)
-      const matchCollectionRef = collection(
-        db,
-        "artifacts",
-        appId,
-        "users",
-        userId,
-        "matches"
-      );
-      const matchDocRef = doc(matchCollectionRef); // Auto-generated ID
-
-      const matchData = {
-        playerOneName: playerOne.name,
-        playerTwoName: playerTwo.name,
-        scoreOne: finalScoreOne,
-        scoreTwo: finalScoreTwo,
-        winnerName: winner?.name || "Draw",
-        timestamp: new Date().toISOString(),
-        difficulty:
-          DIFFICULTY_LEVELS.find((d) => d.value === gameState.difficulty)
-            ?.label || "Normal",
-      };
-
-      batch.set(matchDocRef, matchData);
-
-      await withBackoff(() => batch.commit());
-    },
-    [db, userId, playerOne, playerTwo, gameState.difficulty]
-  );
 
   // --- 7. GAME LOGIC FUNCTIONS ---
 
@@ -650,31 +424,22 @@ const App: React.FC = () => {
   /**
    * Checks if the game is over and handles the final state transition.
    */
-  const isGameOver = useCallback(
-    (p1: Player, p2: Player): boolean => {
-      // Check if either board is full
-      if (isBoardFull(p1.board) || isBoardFull(p2.board)) {
-        let winner: Player | undefined;
-        let playerOneNewTotalWins: number = p1.wins;
-
-        if (p1.score > p2.score) {
-          winner = p1;
-          playerOneNewTotalWins = p1.wins + 1;
-        } else if (p2.score > p1.score) {
-          winner = p2;
-        }
-
-        setGameState((prev) => ({ ...prev, gameOver: true, winner }));
-
-        // Save the results
-        saveData(winner, p1.score, p2.score, playerOneNewTotalWins);
-
-        return true;
+  const isGameOver = useCallback((p1: Player, p2: Player): boolean => {
+    // Check if either board is full
+    if (isBoardFull(p1.board) || isBoardFull(p2.board)) {
+      let winner: Player | undefined;
+      if (p1.score > p2.score) {
+        winner = p1;
+      } else if (p2.score > p1.score) {
+        winner = p2;
       }
-      return false;
-    },
-    [saveData]
-  );
+
+      setGameState((prev) => ({ ...prev, gameOver: true, winner }));
+
+      return true;
+    }
+    return false;
+  }, []);
 
   const handleDiceRoll = useCallback(() => {
     setGameState((prev) => {
@@ -853,17 +618,10 @@ const App: React.FC = () => {
       difficulty: selectedDifficulty, // Use selected difficulty from UI
       rollingDice: true,
       winner: undefined,
-      isAuthReady: gameState.isAuthReady,
     });
 
     // handleDiceRoll will be called via useEffect
-  }, [
-    playerOne.wins,
-    playerTwo.wins,
-    playerOneName,
-    gameState.isAuthReady,
-    selectedDifficulty,
-  ]);
+  }, [playerOne.wins, playerTwo.wins, playerOneName, selectedDifficulty]);
 
   // Handle initial state setup on name change/load
   useEffect(() => {
@@ -871,36 +629,6 @@ const App: React.FC = () => {
       setPlayerOne((p) => ({ ...p, name: playerOneName }));
     }
   }, [playerOneName, gameState.gameOver]);
-
-  if (!gameState.isAuthReady) {
-    return (
-      <div className="flex items-center justify-center min-h-screen w-full bg-gray-900 text-white">
-        <div className="text-xl p-4 rounded-lg bg-gray-800 shadow-xl animate-pulse">
-          <svg
-            className="animate-spin -ml-1 mr-3 h-5 w-5 text-yellow-400"
-            xmlns="http://www.w3.org/2000/svg"
-            fill="none"
-            viewBox="0 0 24 24"
-          >
-            <circle
-              className="opacity-25"
-              cx="12"
-              cy="12"
-              r="10"
-              stroke="currentColor"
-              strokeWidth="4"
-            ></circle>
-            <path
-              className="opacity-75"
-              fill="currentColor"
-              d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-            ></path>
-          </svg>
-          Loading Knucklebuck...
-        </div>
-      </div>
-    );
-  }
 
   // --- 8. UI RENDERING (JSX with Tailwind) ---
   // Recalculating activePlayer here since it's only needed for the message display
@@ -998,11 +726,6 @@ const App: React.FC = () => {
           {!gameState.winner ? (
             /* Welcome/Start Screen */
             <>
-              <h5 className="text-base sm:text-lg mb-4 text-gray-300">
-                Total Wins:{" "}
-                <span className="font-mono text-xl">{playerOne.wins}</span>
-              </h5>
-
               <label
                 htmlFor="player-name"
                 className="text-base sm:text-lg mb-2 text-gray-400 self-start"
@@ -1015,7 +738,7 @@ const App: React.FC = () => {
                 type="text"
                 value={playerOneName}
                 onChange={(e) => setPlayerOneName(e.target.value)}
-                placeholder="The Dice Slinger"
+                placeholder="Player name..."
               />
 
               {/* Difficulty Selection */}
@@ -1023,7 +746,7 @@ const App: React.FC = () => {
                 htmlFor="difficulty-select"
                 className="text-base sm:text-lg mb-2 text-gray-400 self-start"
               >
-                Select Knucklebot Difficulty:
+                Select Difficulty:
               </label>
               <select
                 id="difficulty-select"
@@ -1048,13 +771,6 @@ const App: React.FC = () => {
               >
                 START GAME
               </button>
-              {/* Reverting back to placeholder link text for rules */}
-              <a
-                href="/rules.md"
-                className="text-xs sm:text-sm mt-4 text-gray-500 hover:text-gray-400 transition-colors"
-              >
-                [Rules & Scoring Placeholder]
-              </a>
             </>
           ) : (
             /* Game Over Screen */
@@ -1183,7 +899,13 @@ const App: React.FC = () => {
           </div>
         </div>
       )}
-      <p className="mt-4 sm:mt-8 text-xs text-gray-600">User ID: {userId}</p>
+      <a
+        className="mt-8 py-3 px-6 bg-yellow-600 hover:bg-yellow-500 text-gray-900 font-extrabold text-xl rounded-xl shadow-xl"
+        href="https://cult-of-the-lamb.fandom.com/wiki/Knucklebones"
+        target="_blank"
+      >
+        Rules
+      </a>
     </div>
   );
 };
